@@ -5,17 +5,24 @@ import Data.List
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
+data Coord = Coord {
+    posX :: Int,
+    posY :: Int
+}
 
-processLine :: MazeLine -> String
-processLine (MazeLine []) = "" 
-processLine (MazeLine (x:xs))
-    | x == 0    = " " ++ processLine (MazeLine xs) 
-    | x == 1    = "█" ++ processLine (MazeLine xs)
-    | otherwise = "?" ++ processLine (MazeLine xs) 
+processLine :: MazeLine -> Int -> Coord -> String
+processLine (MazeLine []) _ _ = ""
+processLine (MazeLine (x:xs)) currentX (Coord targetX targetY)
+    | currentX == targetX && targetY == 0 = "o" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
+    | x == 0                              = " " ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
+    | x == 1                              = "█" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
+    | otherwise                           = "?" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
 
-drawMaze :: Maze -> IO ()
-drawMaze (Maze []) = return ()
-drawMaze (Maze (x:xs)) = putStrLn (processLine x) >> drawMaze (Maze xs)
+drawMaze :: Maze -> Coord -> IO ()
+drawMaze (Maze []) _ = return ()
+drawMaze (Maze (x:xs)) (Coord targetX targetY)
+    | targetY == 0 = putStrLn (processLine x 0 (Coord targetX targetY)) >> drawMaze (Maze xs) (Coord targetX (targetY - 1))
+    | otherwise    = putStrLn (processLine x 0 (Coord targetX targetY)) >> drawMaze (Maze xs) (Coord targetX (targetY - 1))
 
 parseMazeLine :: Record -> Maybe MazeLine
 parseMazeLine r =
@@ -44,11 +51,12 @@ main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
     maze <- readMazeFromCSV "mazebinary.csv"
+    
     case maze of
-        Nothing    -> putStrLn "Failed to read maze from CSV file."
+        Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
             putStrLn "Maze successfully loaded!"
-            drawMaze m
+            drawMaze m (Coord 0 1)
 
 
 
