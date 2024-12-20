@@ -2,6 +2,7 @@ import Text.CSV
 import Data.Maybe
 import Data.Char
 import Data.List
+import System.Console.ANSI
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -13,8 +14,8 @@ data Coord = Coord {
 processLine :: MazeLine -> Coord -> String
 processLine (MazeLine []) _ = ""
 processLine (MazeLine (x:xs)) coord
-    | posX coord == 0 && posY coord == 0 = "o" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
-    | x == 0                             = " " ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
+    | posX coord == 0 && posY coord == 0 = setSGRCode [SetColor Foreground Vivid Red] ++ "■" ++ setSGRCode [Reset] ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
+    | x == 0                             = "·" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
     | x == 1                             = "█" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
     | otherwise                          = "?" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
 
