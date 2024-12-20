@@ -20,6 +20,16 @@
   (major1) == 4 && (major2) <  17 || \
   (major1) == 4 && (major2) == 17 && (minor) <= 2)
 #endif /* MIN_VERSION_base */
+/* package csv-0.1.2 */
+#ifndef VERSION_csv
+#define VERSION_csv "0.1.2"
+#endif /* VERSION_csv */
+#ifndef MIN_VERSION_csv
+#define MIN_VERSION_csv(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  1 || \
+  (major1) == 0 && (major2) == 1 && (minor) <= 2)
+#endif /* MIN_VERSION_csv */
 
 /* tool gcc-14.0.6 */
 #ifndef TOOL_VERSION_gcc
