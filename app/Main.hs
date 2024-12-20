@@ -10,19 +10,17 @@ data Coord = Coord {
     posY :: Int
 }
 
-processLine :: MazeLine -> Int -> Coord -> String
-processLine (MazeLine []) _ _ = ""
-processLine (MazeLine (x:xs)) currentX (Coord targetX targetY)
-    | currentX == targetX && targetY == 0 = "o" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
-    | x == 0                              = " " ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
-    | x == 1                              = "█" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
-    | otherwise                           = "?" ++ processLine (MazeLine xs) (currentX + 1) (Coord targetX targetY)
+processLine :: MazeLine -> Coord -> String
+processLine (MazeLine []) _ = ""
+processLine (MazeLine (x:xs)) coord
+    | posX coord == 0 && posY coord == 0 = "o" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
+    | x == 0                             = " " ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
+    | x == 1                             = "█" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
+    | otherwise                          = "?" ++ processLine (MazeLine xs) (coord { posX = posX coord - 1 })
 
 drawMaze :: Maze -> Coord -> IO ()
 drawMaze (Maze []) _ = return ()
-drawMaze (Maze (x:xs)) (Coord targetX targetY)
-    | targetY == 0 = putStrLn (processLine x 0 (Coord targetX targetY)) >> drawMaze (Maze xs) (Coord targetX (targetY - 1))
-    | otherwise    = putStrLn (processLine x 0 (Coord targetX targetY)) >> drawMaze (Maze xs) (Coord targetX (targetY - 1))
+drawMaze (Maze (x:xs)) coord = putStrLn (processLine x coord) >> drawMaze (Maze xs) (coord { posY = posY coord - 1 })
 
 parseMazeLine :: Record -> Maybe MazeLine
 parseMazeLine r =
@@ -32,7 +30,7 @@ parseMazeLine r =
     parseCell c = case removeSpaces c of
         "0" -> Just 0
         "1" -> Just 1
-        _    -> Nothing
+        _   -> Nothing
     removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
 
 rowsToMaze :: [Record] -> Maybe Maze
@@ -56,7 +54,7 @@ main = do
         Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
             putStrLn "Maze successfully loaded!"
-            drawMaze m (Coord 0 1)
+            drawMaze m (Coord 39 39)
 
 
 
