@@ -1,5 +1,7 @@
 import Text.CSV
 import Data.Maybe
+import Data.Char
+import Data.List
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -20,10 +22,11 @@ parseMazeLine r =
     if null validInts then Nothing else Just (MazeLine validInts)
   where
     validInts = mapMaybe parseCell r
-    parseCell c = case c of
+    parseCell c = case removeSpaces c of
         "0" -> Just 0
         "1" -> Just 1
         _    -> Nothing
+    removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
 
 rowsToMaze :: [Record] -> Maybe Maze
 rowsToMaze r =
