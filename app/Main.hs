@@ -69,6 +69,25 @@ calculateDistance maze (Coord x y) direction =
 distanceToWall :: Maze -> Coord -> Direction -> Int
 distanceToWall maze coord direction = calculateDistance maze coord direction -1
 
+move :: Coord -> Int -> Int -> Coord
+move (Coord x y) a b 
+    | a == 1 = (Coord x (y - b))
+    | a == 2 = (Coord x (y + b))
+    | a == 3 = (Coord (x - b) y)
+    | a == 4 = (Coord (x + b) y)
+
+run :: Maze -> Coord -> IO()
+run m player = do
+    mdir <- getLine
+    mdist <- getLine
+    let player2 = move player (read mdir::Int) (read mdist::Int)
+    drawMaze m player2
+    print $ distanceToWall m player2 UpM 
+    print $ distanceToWall m player2 DownM 
+    print $ distanceToWall m player2 LeftM 
+    print $ distanceToWall m player2 RightM
+    run m player2
+
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
@@ -83,6 +102,8 @@ main = do
             print $ distanceToWall m player DownM 
             print $ distanceToWall m player LeftM 
             print $ distanceToWall m player RightM
+            run m player
+
 
 
 
