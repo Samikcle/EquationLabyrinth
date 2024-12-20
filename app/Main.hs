@@ -10,6 +10,7 @@ data Coord = Coord {
     posX :: Int,
     posY :: Int
 }
+data Direction = UpM | DownM | LeftM | RightM
 
 processLine :: MazeLine -> Coord -> String
 processLine (MazeLine []) _ = ""
@@ -46,16 +47,43 @@ readMazeFromCSV filePath = do
         Left _     -> return Nothing
         Right r -> return $ rowsToMaze r
 
+getCell :: Maze -> Coord -> Maybe Int
+getCell (Maze lines) (Coord x y)
+  | y < 0 || y >= length lines = Nothing 
+  | x < 0 || x >= length line = Nothing 
+  | otherwise = Just (line !! x)
+  where
+    MazeLine line = lines !! y
+
+calculateDistance :: Maze -> Coord -> Direction -> Int
+calculateDistance maze (Coord x y) direction =
+  case getCell maze (Coord x y) of
+    Just 1 -> 0 
+    Just 0 -> case direction of
+      UpM    -> 1 + calculateDistance maze (Coord x (y - 1)) direction
+      DownM  -> 1 + calculateDistance maze (Coord x (y + 1)) direction
+      LeftM  -> 1 + calculateDistance maze (Coord (x - 1) y) direction
+      RightM -> 1 + calculateDistance maze (Coord (x + 1) y) direction
+    _ -> 0 
+
+distanceToWall :: Maze -> Coord -> Direction -> Int
+distanceToWall maze coord direction = calculateDistance maze coord direction -1
+
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
     maze <- readMazeFromCSV "mazebinary.csv"
-    
+    let player = (Coord 1 1)
     case maze of
         Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
             putStrLn "Maze successfully loaded!"
-            drawMaze m (Coord 39 39)
+            drawMaze m player
+            print $ distanceToWall m player UpM 
+            print $ distanceToWall m player DownM 
+            print $ distanceToWall m player LeftM 
+            print $ distanceToWall m player RightM
+
 
 
 
