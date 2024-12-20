@@ -1,4 +1,5 @@
 import Text.CSV
+import Data.Maybe
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -14,30 +15,35 @@ drawMaze :: Maze -> IO ()
 drawMaze (Maze []) = return ()
 drawMaze (Maze (x:xs)) = putStrLn (processLine x) >> drawMaze (Maze xs)
 
-toMazeLine :: Record -> Maybe MazeLine
-toMazeLine record = MazeLine <$> traverse toInt record
+parseMazeLine :: Record -> Maybe MazeLine
+parseMazeLine r =
+    if null validInts then Nothing else Just (MazeLine validInts)
   where
-    toInt str = case reads str :: [(Int, String)] of
-                  [(n, "")] | n == 0 || n == 1 -> Just n
-                  _                           -> Nothing
+    validInts = mapMaybe parseCell r
+    parseCell c = case c of
+        "0" -> Just 0
+        "1" -> Just 1
+        _    -> Nothing
 
-csvToMaze :: CSV -> Maybe Maze
-csvToMaze x = Maze <$> traverse toMazeLine x
+rowsToMaze :: [Record] -> Maybe Maze
+rowsToMaze r =
+    let mazeLines = mapMaybe parseMazeLine r
+    in if null mazeLines then Nothing else Just (Maze mazeLines)
 
 readMazeFromCSV :: FilePath -> IO (Maybe Maze)
 readMazeFromCSV filePath = do
     result <- parseCSVFromFile filePath
-    return $ case result of
-        Left _    -> Nothing 
-        Right x -> csvToMaze x
+    case result of
+        Left _     -> return Nothing
+        Right r -> return $ rowsToMaze r
 
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
     maze <- readMazeFromCSV "mazebinary.csv"
     case maze of
-        Nothing   -> putStrLn "Failed to read maze from CSV file."
-        Just m    -> do
+        Nothing    -> putStrLn "Failed to read maze from CSV file."
+        Just m -> do
             putStrLn "Maze successfully loaded!"
             drawMaze m
 
