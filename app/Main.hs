@@ -3,6 +3,7 @@ import Data.Maybe
 import Data.Char
 import Data.List
 import System.Console.ANSI
+import System.Random
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -11,6 +12,7 @@ data Coord = Coord {
     posY :: Int
 } deriving (Show)
 data Direction = UpM | DownM | LeftM | RightM deriving (Eq,Read)
+data MathEqs = PlusN | MinusN | NMinus | TimesN | DivideN | NDivide | ModN | NMod | SquareN | RootN deriving (Enum, Bounded, Show)
 
 opposite :: Direction -> Direction
 opposite UpM = DownM
@@ -54,12 +56,12 @@ readMazeFromCSV filePath = do
         Right r -> return $ rowsToMaze r
 
 getCell :: Maze -> Coord -> Maybe Int
-getCell (Maze lines) (Coord x y)
-  | y < 0 || y >= length lines = Nothing
-  | x < 0 || x >= length line = Nothing
-  | otherwise = Just (line !! x)
+getCell (Maze ls) (Coord x y)
+  | y < 0 || y >= length ls = Nothing
+  | x < 0 || x >= length l = Nothing
+  | otherwise = Just (l !! x)
   where
-    MazeLine line = lines !! y
+    MazeLine l = ls !! y
 
 calculateDistance :: Maze -> Coord -> Direction -> Int
 calculateDistance maze (Coord x y) direction =
@@ -88,12 +90,16 @@ run m player = do
     mdir <- getLine
     mdist <- getLine
     let player2 = checkMovement m player (read mdir::Direction) (read mdist::Int)
+    gen <- newStdGen
+    gen2 <- newStdGen
     drawMaze m player2
     print $ distanceToWall m player2 UpM
     print $ distanceToWall m player2 DownM
     print $ distanceToWall m player2 LeftM
     print $ distanceToWall m player2 RightM
     print $ player2
+    printEq (randomMathEq gen)
+    printEq (randomMathEq gen2)
     run m player2
 
 checkMovement :: Maze -> Coord -> Direction -> Int -> Coord
@@ -103,12 +109,25 @@ checkMovement m c d x
     | distanceToWall m c d >= x                                         = move c d x 
     | otherwise                                                         = checkMovement m (move c d (distanceToWall m c d)) (opposite d) (x-distanceToWall m c d)
 
+randomMathEq :: StdGen -> MathEqs
+randomMathEq gen = toEnum randomIndex
+  where
+    (randomIndex, _) = randomR (fromEnum (minBound :: MathEqs), fromEnum (maxBound :: MathEqs)) gen
+
+randomInterger :: StdGen -> Int -> Int -> Int
+randomInterger gen minI maxI = randomValue
+  where
+    (randomValue, _) = randomR (minI, maxI) gen
+
+printEq :: MathEqs -> IO ()
+printEq x = putStrLn $ show x
 
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
     maze <- readMazeFromCSV "mazebinary.csv"
     let player = (Coord 1 1)
+    
     case maze of
         Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
