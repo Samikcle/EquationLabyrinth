@@ -4,6 +4,7 @@ import Data.Char
 import Data.List
 import System.Console.ANSI
 import System.Random
+import Control.Monad
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -98,8 +99,10 @@ run m player = do
     print $ distanceToWall m player2 LeftM
     print $ distanceToWall m player2 RightM
     print $ player2
-    printEq (randomMathEq gen)
-    printEq (randomMathEq gen2)
+    putStrLn $ show (randomMathEqs gen)
+    putStrLn $ show (randomMathEqs gen2)
+    (eqe, n) <- chooseMathEq
+    putStrLn $ show (eqe) ++ show (n)
     run m player2
 
 checkMovement :: Maze -> Coord -> Direction -> Int -> Coord
@@ -109,18 +112,59 @@ checkMovement m c d x
     | distanceToWall m c d >= x                                         = move c d x 
     | otherwise                                                         = checkMovement m (move c d (distanceToWall m c d)) (opposite d) (x-distanceToWall m c d)
 
-randomMathEq :: StdGen -> MathEqs
-randomMathEq gen = toEnum randomIndex
+randomMathEqs :: StdGen -> [MathEqs]
+randomMathEqs gen = map toEnum randomIndices
   where
-    (randomIndex, _) = randomR (fromEnum (minBound :: MathEqs), fromEnum (maxBound :: MathEqs)) gen
+    randomIndices = take 4 $ randomRs (fromEnum (minBound :: MathEqs), fromEnum (maxBound :: MathEqs)) gen
 
-randomInterger :: StdGen -> Int -> Int -> Int
-randomInterger gen minI maxI = randomValue
+randomInteger :: StdGen -> Int -> Int -> Int
+randomInteger gen minI maxI = randomValue
   where
     (randomValue, _) = randomR (minI, maxI) gen
 
-printEq :: MathEqs -> IO ()
-printEq x = putStrLn $ show x
+mathEqToString :: MathEqs -> IO (String, Int)
+mathEqToString eq = do
+  gen <- newStdGen 
+  case eq of
+    PlusN   -> let x = randomInteger gen 1 10 in return ("n + " ++ show x, x)
+    MinusN  -> let x = randomInteger gen 1 10 in return ("n - " ++ show x, x)
+    NMinus  -> let x = randomInteger gen 1 25 in return (show x ++ " - n", x)
+    TimesN  -> let x = randomInteger gen 1 5  in return ("n * " ++ show x, x)
+    DivideN -> let x = randomInteger gen 1 10  in return ("n ÷ " ++ show x, x)
+    NDivide -> let x = randomInteger gen 10 50  in return (show x ++ " ÷ n", x)
+    ModN    -> let x = randomInteger gen 1 50  in return ("n mod(%) " ++ show x, x)
+    NMod    -> let x = randomInteger gen 1 25  in return (show x ++ " mod(%) n", x)
+    SquareN -> return ("n²", 0) 
+    RootN   -> return ("√n", 0)  
+
+selectFrom4 :: IO Int
+selectFrom4 = do
+  putStrLn "Select an option (1-4):"
+  input <- getLine
+  case reads (removeSpaces input) of
+    [(num, "")] | num >= 1 && num <= 4 -> return num 
+    _ -> do
+      putStrLn "Invalid input. Please enter a number between 1 and 4."
+      selectFrom4
+  where
+    removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
+
+chooseMathEq :: IO (MathEqs, Int)
+chooseMathEq = do
+  gen <- newStdGen
+  let mathEqs = randomMathEqs gen
+
+  eqStrings <- mapM mathEqToString mathEqs
+
+  forM_ (zip [1..] eqStrings) $ \(i, (str, _)) ->
+    putStrLn $ show i ++ ". " ++ str
+
+  choice <- selectFrom4
+
+  let selectedEq = mathEqs !! (choice - 1)
+  let (_, x) = eqStrings !! (choice - 1)
+
+  return (selectedEq, x)
 
 main :: IO ()
 main = do
