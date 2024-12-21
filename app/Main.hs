@@ -9,8 +9,14 @@ newtype Maze = Maze [MazeLine]
 data Coord = Coord {
     posX :: Int,
     posY :: Int
-}
-data Direction = UpM | DownM | LeftM | RightM
+} deriving (Show)
+data Direction = UpM | DownM | LeftM | RightM deriving (Eq,Read)
+
+opposite :: Direction -> Direction
+opposite UpM = DownM
+opposite DownM = UpM
+opposite LeftM = RightM
+opposite RightM = LeftM
 
 processLine :: MazeLine -> Coord -> String
 processLine (MazeLine []) _ = ""
@@ -49,8 +55,8 @@ readMazeFromCSV filePath = do
 
 getCell :: Maze -> Coord -> Maybe Int
 getCell (Maze lines) (Coord x y)
-  | y < 0 || y >= length lines = Nothing 
-  | x < 0 || x >= length line = Nothing 
+  | y < 0 || y >= length lines = Nothing
+  | x < 0 || x >= length line = Nothing
   | otherwise = Just (line !! x)
   where
     MazeLine line = lines !! y
@@ -58,35 +64,45 @@ getCell (Maze lines) (Coord x y)
 calculateDistance :: Maze -> Coord -> Direction -> Int
 calculateDistance maze (Coord x y) direction =
   case getCell maze (Coord x y) of
-    Just 1 -> 0 
+    Just 1 -> 0
     Just 0 -> case direction of
       UpM    -> 1 + calculateDistance maze (Coord x (y - 1)) direction
       DownM  -> 1 + calculateDistance maze (Coord x (y + 1)) direction
       LeftM  -> 1 + calculateDistance maze (Coord (x - 1) y) direction
       RightM -> 1 + calculateDistance maze (Coord (x + 1) y) direction
-    _ -> 0 
+    _ -> 0
 
 distanceToWall :: Maze -> Coord -> Direction -> Int
 distanceToWall maze coord direction = calculateDistance maze coord direction -1
 
-move :: Coord -> Int -> Int -> Coord
-move (Coord x y) a b 
-    | a == 1 = (Coord x (y - b))
-    | a == 2 = (Coord x (y + b))
-    | a == 3 = (Coord (x - b) y)
-    | a == 4 = (Coord (x + b) y)
+move :: Coord -> Direction -> Int-> Coord
+move (Coord x y) d i
+    | d == UpM      = Coord x (y - i)
+    | d == DownM    = Coord x (y + i)
+    | d == LeftM    = Coord (x - i) y
+    | d == RightM   = Coord (x + i) y
+    | otherwise     = Coord x y
 
 run :: Maze -> Coord -> IO()
 run m player = do
     mdir <- getLine
     mdist <- getLine
-    let player2 = move player (read mdir::Int) (read mdist::Int)
+    let player2 = checkMovement m player (read mdir::Direction) (read mdist::Int)
     drawMaze m player2
-    print $ distanceToWall m player2 UpM 
-    print $ distanceToWall m player2 DownM 
-    print $ distanceToWall m player2 LeftM 
+    print $ distanceToWall m player2 UpM
+    print $ distanceToWall m player2 DownM
+    print $ distanceToWall m player2 LeftM
     print $ distanceToWall m player2 RightM
+    print $ player2
     run m player2
+
+checkMovement :: Maze -> Coord -> Direction -> Int -> Coord
+checkMovement m c d x
+    | distanceToWall m c d == 0 && distanceToWall m c (opposite d) == 0 = c
+    | distanceToWall m c d == 0                                         = checkMovement m c (opposite d) x
+    | distanceToWall m c d >= x                                         = move c d x 
+    | otherwise                                                         = checkMovement m (move c d (distanceToWall m c d)) (opposite d) (x-distanceToWall m c d)
+
 
 main :: IO ()
 main = do
@@ -98,10 +114,11 @@ main = do
         Just m -> do
             putStrLn "Maze successfully loaded!"
             drawMaze m player
-            print $ distanceToWall m player UpM 
-            print $ distanceToWall m player DownM 
-            print $ distanceToWall m player LeftM 
+            print $ distanceToWall m player UpM
+            print $ distanceToWall m player DownM
+            print $ distanceToWall m player LeftM
             print $ distanceToWall m player RightM
+            print $ player
             run m player
 
 
