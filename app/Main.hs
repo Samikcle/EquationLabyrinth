@@ -12,7 +12,7 @@ newtype Maze = Maze [MazeLine]
 data Coord = Coord {
     posX :: Int,
     posY :: Int
-} deriving (Show)
+} deriving (Show,Eq)
 data Direction = UpM | DownM | LeftM | RightM deriving (Eq,Read)
 data MathEqs = PlusN | MinusN | NMinus | TimesN | DivideN | NDivide | ModN | NMod | SquareN | RootN deriving (Enum, Bounded, Show)
 
@@ -88,27 +88,28 @@ move (Coord x y) d i
     | otherwise     = Coord x y
 
 run :: Maze -> Coord -> IO()
-run m player = do
+run m player = 
+  if player == (Coord 1 13) then putStrLn "Congrats"
+  else do
     (eqe, n) <- chooseMathEq m player
-    (dist) <- obtainNValue m player eqe n
-    mdir <- getLine
-    mdist <- getLine
-    let player2 = checkMovement m player (read mdir::Direction) (read mdist::Int)
-    gen <- newStdGen
-    gen2 <- newStdGen
+    dist <- obtainNValue m player eqe n
+    let movemen = calculateMovement eqe n dist
+    intDir <- getDirection m player eqe n dist movemen
+    let dir = intToDir intDir
+    let player2 = checkMovement m player dir movemen
+
     drawMaze m player2
     print $ distanceToWall m player2 UpM
     print $ distanceToWall m player2 DownM
     print $ distanceToWall m player2 LeftM
     print $ distanceToWall m player2 RightM
     print $ player2
-    putStrLn $ show (randomMathEqs gen)
-    putStrLn $ show (randomMathEqs gen2)
     putStrLn $ show (eqe) ++ show (n)
     run m player2
 
 checkMovement :: Maze -> Coord -> Direction -> Int -> Coord
 checkMovement m c d x
+    | x < 0                                                             = checkMovement m c (opposite d) (-x)
     | distanceToWall m c d == 0 && distanceToWall m c (opposite d) == 0 = c
     | distanceToWall m c d == 0                                         = checkMovement m c (opposite d) x
     | distanceToWall m c d >= x                                         = move c d x 
@@ -158,6 +159,7 @@ chooseMathEq m c = do
   let mathEqs = randomMathEqs gen
 
   eqStrings <- mapM mathEqToString mathEqs
+  putStrLn "Equations:"
 
   forM_ (zip [1..] eqStrings) $ \(i, (str, _)) ->
     putStrLn $ show i ++ ". " ++ str
@@ -181,17 +183,17 @@ getInput = do
   where
     removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
 
-printSelectedEq :: MathEqs -> Int -> IO()
-printSelectedEq PlusN x   = putStrLn $ "n + " ++ show x
-printSelectedEq MinusN x  = putStrLn $ "n - " ++ show x
-printSelectedEq NMinus x  = putStrLn $ show x ++ " - n"
-printSelectedEq TimesN x  = putStrLn $ "n * " ++ show x
-printSelectedEq DivideN x = putStrLn $ "n ÷ " ++ show x
-printSelectedEq NDivide x = putStrLn $ show x ++ " ÷ n"
-printSelectedEq ModN x    = putStrLn $ "n mod(%) " ++ show x
-printSelectedEq NMod x    = putStrLn $ show x ++ " mod(%) n"
-printSelectedEq SquareN _ = putStrLn "n²"
-printSelectedEq RootN _   = putStrLn "√n"
+stringSelectedEq :: MathEqs -> Int -> String -> String
+stringSelectedEq PlusN x n  = n ++ " + " ++ show x
+stringSelectedEq MinusN x n = n ++ " - " ++ show x
+stringSelectedEq NMinus x n = show x ++ " - " ++ n
+stringSelectedEq TimesN x n = n ++ " * " ++ show x
+stringSelectedEq DivideN x n = n ++ " ÷ " ++ show x
+stringSelectedEq NDivide x n = show x ++ " ÷ " ++ n
+stringSelectedEq ModN x n   = n ++ " mod(%) " ++ show x
+stringSelectedEq NMod x n   = show x ++ " mod(%) " ++ n
+stringSelectedEq SquareN _ n = n ++ "²"
+stringSelectedEq RootN _ n  = "√" ++ n
 
 intToDir :: Int -> Direction
 intToDir x
@@ -201,14 +203,14 @@ intToDir x
     | otherwise = RightM
 
 calculateMovement :: MathEqs -> Int -> Int -> Int
-calculateMovement PlusN x y   = x + y
-calculateMovement MinusN x y  = x - y
-calculateMovement NMinus x y  = y - x
-calculateMovement TimesN x y  = x * y
-calculateMovement DivideN x y = div x y
-calculateMovement NDivide x y = div y x
-calculateMovement ModN x y    = mod x y
-calculateMovement NMod x y    = mod y x
+calculateMovement PlusN x y   = y + x
+calculateMovement MinusN x y  = y - x
+calculateMovement NMinus x y  = x - y
+calculateMovement TimesN x y  = y * x
+calculateMovement DivideN x y = div y x
+calculateMovement NDivide x y = div x y
+calculateMovement ModN x y    = mod y x
+calculateMovement NMod x y    = mod x y
 calculateMovement SquareN _ y = y^2
 calculateMovement RootN _ y   = round (sqrt (fromIntegral y))
 
@@ -216,10 +218,24 @@ obtainNValue :: Maze -> Coord -> MathEqs -> Int -> IO Int
 obtainNValue m c e x = do
   drawMaze m c
   putStrLn "Selected Equation:"
-  printSelectedEq e x
-  putStrLn "Enter a value for N:"
+  putStrLn $ stringSelectedEq e x "n"
+  putStrLn "Enter a value for n:"
   n <- getInput
   return n 
+
+getDirection :: Maze -> Coord -> MathEqs -> Int -> Int -> Int -> IO Int
+getDirection m c e x n a = do
+  drawMaze m c
+  putStrLn "Final Equation:"
+  putStrLn $ stringSelectedEq e x (show n) ++ " = " ++ show a
+  putStrLn $ "Current distance to each wall: Up: " ++ show (distanceToWall m c UpM) ++ " Down: " ++ show (distanceToWall m c DownM) ++ " Left: " ++ show (distanceToWall m c LeftM) ++ " Right: " ++ show (distanceToWall m c RightM) 
+  putStrLn $ "Select a direction to move " ++ show a ++ " spaces in:"
+  putStrLn "1. Up"
+  putStrLn "2. Down"
+  putStrLn "3. Left"
+  putStrLn "4. Right"
+  selection <- selectFrom4
+  return selection
 
 main :: IO ()
 main = do
