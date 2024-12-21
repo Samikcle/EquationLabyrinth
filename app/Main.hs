@@ -89,13 +89,14 @@ move (Coord x y) d i
 
 run :: Maze -> Coord -> IO()
 run m player = 
-  if player == (Coord 9 1) then do -- if player == getExit m then do
+  if player == (Coord 1 1) then do -- if player == getExit m then do
     drawMaze m player
     putStrLn "Congratulation for beating the maze!"
     putStrLn "Press Enter to return to menu"
     continue <- getLine
     putStr ""
   else do
+    putStrLn $ show (getExit m)
     (eqe, n) <- chooseMathEq m player
     dist <- obtainNValue m player eqe n
     let movemen = calculateMovement eqe n dist
@@ -238,7 +239,8 @@ printDistanceToWall m c = putStrLn $ "Current distance to each wall: Up: " ++ sh
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
-    maze <- readMazeFromCSV ("maze levels/maze_binary " ++ "(1)" ++ ".csv")
+    level <- getInput 1 10
+    maze <- readMazeFromCSV ("maze levels/level " ++ show level ++ ".csv")
     let player = (Coord 0 1)
     
     case maze of
