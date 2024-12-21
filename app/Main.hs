@@ -89,7 +89,12 @@ move (Coord x y) d i
 
 run :: Maze -> Coord -> IO()
 run m player = 
-  if player == (Coord 1 13) then putStrLn "Congrats"
+  if player == (Coord 9 1) then do -- if player == getExit m then do
+    drawMaze m player
+    putStrLn "Congratulation for beating the maze!"
+    putStrLn "Press Enter to return to menu"
+    continue <- getLine
+    putStr ""
   else do
     (eqe, n) <- chooseMathEq m player
     dist <- obtainNValue m player eqe n
@@ -97,15 +102,16 @@ run m player =
     intDir <- getDirection m player eqe n dist movemen
     let dir = intToDir intDir
     let player2 = checkMovement m player dir movemen
-
-    drawMaze m player2
-    print $ distanceToWall m player2 UpM
-    print $ distanceToWall m player2 DownM
-    print $ distanceToWall m player2 LeftM
-    print $ distanceToWall m player2 RightM
-    print $ player2
-    putStrLn $ show (eqe) ++ show (n)
     run m player2
+
+getExit :: Maze -> Coord
+getExit (Maze mazeLines) = 
+    let 
+        height = length mazeLines
+        width = case mazeLines of
+            [] -> 0
+            (MazeLine line : _) -> length line
+    in Coord (width - 1) (height - 2)
 
 checkMovement :: Maze -> Coord -> Direction -> Int -> Coord
 checkMovement m c d x
@@ -125,61 +131,50 @@ randomInteger gen minI maxI = randomValue
   where
     (randomValue, _) = randomR (minI, maxI) gen
 
-mathEqToString :: MathEqs -> IO (String, Int)
-mathEqToString eq = do
+genNumFromEq :: MathEqs -> IO Int
+genNumFromEq eq = do
   gen <- newStdGen 
   case eq of
-    PlusN   -> let x = randomInteger gen 1 10 in return ("n + " ++ show x, x)
-    MinusN  -> let x = randomInteger gen 1 10 in return ("n - " ++ show x, x)
-    NMinus  -> let x = randomInteger gen 1 25 in return (show x ++ " - n", x)
-    TimesN  -> let x = randomInteger gen 1 5 in return ("n * " ++ show x, x)
-    DivideN -> let x = randomInteger gen 1 10 in return ("n ÷ " ++ show x, x)
-    NDivide -> let x = randomInteger gen 10 50 in return (show x ++ " ÷ n", x)
-    ModN    -> let x = randomInteger gen 1 50 in return ("n mod(%) " ++ show x, x)
-    NMod    -> let x = randomInteger gen 1 25 in return (show x ++ " mod(%) n", x)
-    SquareN -> return ("n²", 0) 
-    RootN   -> return ("√n", 0)  
-
-selectFrom4 :: IO Int
-selectFrom4 = do
-    putStrLn "Select an option (1-4):"
-    input <- getLine
-    case readMaybe (removeSpaces input) :: Maybe Int of
-        Just num | num >= 1 && num <= 4 -> return num
-        _ -> do
-            putStrLn "Invalid input. Please enter a number between 1 and 4."
-            selectFrom4
-  where
-    removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
+    PlusN   -> let x = randomInteger gen 1 10 in return x
+    MinusN  -> let x = randomInteger gen 1 10 in return x
+    NMinus  -> let x = randomInteger gen 1 25 in return x
+    TimesN  -> let x = randomInteger gen 1 5 in return x
+    DivideN -> let x = randomInteger gen 1 10 in return x
+    NDivide -> let x = randomInteger gen 10 50 in return x
+    ModN    -> let x = randomInteger gen 1 50 in return x
+    NMod    -> let x = randomInteger gen 1 25 in return x
+    SquareN -> return 0
+    RootN   -> return 0
 
 chooseMathEq :: Maze -> Coord -> IO (MathEqs, Int)
 chooseMathEq m c = do
   drawMaze m c
   gen <- newStdGen
   let mathEqs = randomMathEqs gen
-
-  eqStrings <- mapM mathEqToString mathEqs
+  eqInts <- mapM genNumFromEq mathEqs
+  let eqStrings = zipWith (\eq x -> stringSelectedEq eq x "n") mathEqs eqInts
+  printDistanceToWall m c 
   putStrLn "Equations:"
 
-  forM_ (zip [1..] eqStrings) $ \(i, (str, _)) ->
+  forM_ (zip [1..] eqStrings) $ \(i, str) ->
     putStrLn $ show i ++ ". " ++ str
-
-  selection <- selectFrom4
+  putStrLn "Select an option (1-4):"
+  selection <- getInput 1 4
 
   let selectedEq = mathEqs !! (selection - 1)
-  let (_, x) = eqStrings !! (selection - 1)
+  let x = eqInts !! (selection - 1)
 
   return (selectedEq, x)
 
-getInput :: IO Int
-getInput = do
+getInput :: Int -> Int -> IO Int
+getInput minIn maxIn = do
   input <- getLine
   case readMaybe (removeSpaces input) :: Maybe Int of
-      Just n | n >= 0 -> return n
+      Just n | n >= minIn && n <= maxIn-> return n
       _ -> do
-            putStrLn "Invalid input. Number cannot be negative or have decimal."
+            putStrLn $ "Invalid input. Please enter a number between " ++ show minIn ++ " to " ++ show maxIn ++ "."
             putStrLn "Enter input again:"
-            getInput
+            getInput minIn maxIn
   where
     removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
 
@@ -217,42 +212,39 @@ calculateMovement RootN _ y   = round (sqrt (fromIntegral y))
 obtainNValue :: Maze -> Coord -> MathEqs -> Int -> IO Int
 obtainNValue m c e x = do
   drawMaze m c
+  printDistanceToWall m c 
   putStrLn "Selected Equation:"
   putStrLn $ stringSelectedEq e x "n"
   putStrLn "Enter a value for n:"
-  n <- getInput
-  return n 
+  getInput 0 100
 
 getDirection :: Maze -> Coord -> MathEqs -> Int -> Int -> Int -> IO Int
 getDirection m c e x n a = do
   drawMaze m c
+  printDistanceToWall m c 
   putStrLn "Final Equation:"
   putStrLn $ stringSelectedEq e x (show n) ++ " = " ++ show a
-  putStrLn $ "Current distance to each wall: Up: " ++ show (distanceToWall m c UpM) ++ " Down: " ++ show (distanceToWall m c DownM) ++ " Left: " ++ show (distanceToWall m c LeftM) ++ " Right: " ++ show (distanceToWall m c RightM) 
   putStrLn $ "Select a direction to move " ++ show a ++ " spaces in:"
   putStrLn "1. Up"
   putStrLn "2. Down"
   putStrLn "3. Left"
   putStrLn "4. Right"
-  selection <- selectFrom4
-  return selection
+  putStrLn "Select an option (1-4):"
+  getInput 1 4
+
+printDistanceToWall :: Maze -> Coord -> IO()
+printDistanceToWall m c = putStrLn $ "Current distance to each wall: Up: " ++ show (distanceToWall m c UpM) ++ " Down: " ++ show (distanceToWall m c DownM) ++ " Left: " ++ show (distanceToWall m c LeftM) ++ " Right: " ++ show (distanceToWall m c RightM)
 
 main :: IO ()
 main = do
     putStrLn "Hello, Haskell Test!"
-    maze <- readMazeFromCSV "mazebinary.csv"
-    let player = (Coord 1 1)
+    maze <- readMazeFromCSV ("maze levels/maze_binary " ++ "(1)" ++ ".csv")
+    let player = (Coord 0 1)
     
     case maze of
         Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
             putStrLn "Maze successfully loaded!"
-            drawMaze m player
-            print $ distanceToWall m player UpM
-            print $ distanceToWall m player DownM
-            print $ distanceToWall m player LeftM
-            print $ distanceToWall m player RightM
-            print $ player
             run m player
 
 
