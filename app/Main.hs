@@ -5,6 +5,7 @@ import Data.List
 import System.Console.ANSI
 import System.Random
 import Control.Monad
+import Text.Read
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -88,6 +89,8 @@ move (Coord x y) d i
 
 run :: Maze -> Coord -> IO()
 run m player = do
+    (eqe, n) <- chooseMathEq m player
+    (dist) <- obtainNValue m player eqe n
     mdir <- getLine
     mdist <- getLine
     let player2 = checkMovement m player (read mdir::Direction) (read mdist::Int)
@@ -101,7 +104,6 @@ run m player = do
     print $ player2
     putStrLn $ show (randomMathEqs gen)
     putStrLn $ show (randomMathEqs gen2)
-    (eqe, n) <- chooseMathEq
     putStrLn $ show (eqe) ++ show (n)
     run m player2
 
@@ -129,28 +131,29 @@ mathEqToString eq = do
     PlusN   -> let x = randomInteger gen 1 10 in return ("n + " ++ show x, x)
     MinusN  -> let x = randomInteger gen 1 10 in return ("n - " ++ show x, x)
     NMinus  -> let x = randomInteger gen 1 25 in return (show x ++ " - n", x)
-    TimesN  -> let x = randomInteger gen 1 5  in return ("n * " ++ show x, x)
-    DivideN -> let x = randomInteger gen 1 10  in return ("n ÷ " ++ show x, x)
-    NDivide -> let x = randomInteger gen 10 50  in return (show x ++ " ÷ n", x)
-    ModN    -> let x = randomInteger gen 1 50  in return ("n mod(%) " ++ show x, x)
-    NMod    -> let x = randomInteger gen 1 25  in return (show x ++ " mod(%) n", x)
+    TimesN  -> let x = randomInteger gen 1 5 in return ("n * " ++ show x, x)
+    DivideN -> let x = randomInteger gen 1 10 in return ("n ÷ " ++ show x, x)
+    NDivide -> let x = randomInteger gen 10 50 in return (show x ++ " ÷ n", x)
+    ModN    -> let x = randomInteger gen 1 50 in return ("n mod(%) " ++ show x, x)
+    NMod    -> let x = randomInteger gen 1 25 in return (show x ++ " mod(%) n", x)
     SquareN -> return ("n²", 0) 
     RootN   -> return ("√n", 0)  
 
 selectFrom4 :: IO Int
 selectFrom4 = do
-  putStrLn "Select an option (1-4):"
-  input <- getLine
-  case reads (removeSpaces input) of
-    [(num, "")] | num >= 1 && num <= 4 -> return num 
-    _ -> do
-      putStrLn "Invalid input. Please enter a number between 1 and 4."
-      selectFrom4
+    putStrLn "Select an option (1-4):"
+    input <- getLine
+    case readMaybe (removeSpaces input) :: Maybe Int of
+        Just num | num >= 1 && num <= 4 -> return num
+        _ -> do
+            putStrLn "Invalid input. Please enter a number between 1 and 4."
+            selectFrom4
   where
     removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
 
-chooseMathEq :: IO (MathEqs, Int)
-chooseMathEq = do
+chooseMathEq :: Maze -> Coord -> IO (MathEqs, Int)
+chooseMathEq m c = do
+  drawMaze m c
   gen <- newStdGen
   let mathEqs = randomMathEqs gen
 
@@ -159,12 +162,64 @@ chooseMathEq = do
   forM_ (zip [1..] eqStrings) $ \(i, (str, _)) ->
     putStrLn $ show i ++ ". " ++ str
 
-  choice <- selectFrom4
+  selection <- selectFrom4
 
-  let selectedEq = mathEqs !! (choice - 1)
-  let (_, x) = eqStrings !! (choice - 1)
+  let selectedEq = mathEqs !! (selection - 1)
+  let (_, x) = eqStrings !! (selection - 1)
 
   return (selectedEq, x)
+
+getInput :: IO Int
+getInput = do
+  input <- getLine
+  case readMaybe (removeSpaces input) :: Maybe Int of
+      Just n | n >= 0 -> return n
+      _ -> do
+            putStrLn "Invalid input. Number cannot be negative or have decimal."
+            putStrLn "Enter input again:"
+            getInput
+  where
+    removeSpaces = dropWhileEnd isSpace . dropWhile isSpace
+
+printSelectedEq :: MathEqs -> Int -> IO()
+printSelectedEq PlusN x   = putStrLn $ "n + " ++ show x
+printSelectedEq MinusN x  = putStrLn $ "n - " ++ show x
+printSelectedEq NMinus x  = putStrLn $ show x ++ " - n"
+printSelectedEq TimesN x  = putStrLn $ "n * " ++ show x
+printSelectedEq DivideN x = putStrLn $ "n ÷ " ++ show x
+printSelectedEq NDivide x = putStrLn $ show x ++ " ÷ n"
+printSelectedEq ModN x    = putStrLn $ "n mod(%) " ++ show x
+printSelectedEq NMod x    = putStrLn $ show x ++ " mod(%) n"
+printSelectedEq SquareN _ = putStrLn "n²"
+printSelectedEq RootN _   = putStrLn "√n"
+
+intToDir :: Int -> Direction
+intToDir x
+    | x == 1 = UpM
+    | x == 2 = DownM
+    | x == 3 = LeftM
+    | otherwise = RightM
+
+calculateMovement :: MathEqs -> Int -> Int -> Int
+calculateMovement PlusN x y   = x + y
+calculateMovement MinusN x y  = x - y
+calculateMovement NMinus x y  = y - x
+calculateMovement TimesN x y  = x * y
+calculateMovement DivideN x y = div x y
+calculateMovement NDivide x y = div y x
+calculateMovement ModN x y    = mod x y
+calculateMovement NMod x y    = mod y x
+calculateMovement SquareN _ y = y^2
+calculateMovement RootN _ y   = round (sqrt (fromIntegral y))
+
+obtainNValue :: Maze -> Coord -> MathEqs -> Int -> IO Int
+obtainNValue m c e x = do
+  drawMaze m c
+  putStrLn "Selected Equation:"
+  printSelectedEq e x
+  putStrLn "Enter a value for N:"
+  n <- getInput
+  return n 
 
 main :: IO ()
 main = do
