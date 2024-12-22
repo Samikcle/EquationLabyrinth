@@ -91,7 +91,7 @@ move (Coord x y) d i
 
 run :: Maze -> Coord -> Int ->IO()
 run m player turn =
-  if player == Coord 1 1 then do -- if player == getExit m then do
+  if player == getExit m then do
     clearScreen
     drawMaze m player
     putStrLn "Congratulation for beating the maze!"
@@ -246,7 +246,14 @@ printDistanceToWall m c = putStrLn $ "Current distance to each wall: Up: " ++ sh
 menu :: IO()
 menu = do
   clearScreen
-  putStrLn "Welcome to Equation Labyrinth!"
+  putStrLn "Welcome to "
+  putStrLn " ___  __            ___    __"
+  putStrLn "|__  /  \\ |  |  /\\   |  | /  \\ |\\ |"
+  putStrLn "|___ \\__X \\__/ /~~\\  |  | \\__/ | \\|"
+  putStrLn "           __       __         ___     "
+  putStrLn "|     /\\  |__) \\ / |__) | |\\ |  |  |__| "
+  putStrLn "|___ /~~\\ |__)  |  |  \\ | | \\|  |  |  |"
+  putStrLn ""
   putStrLn "1. Play"
   putStrLn "2. How to play"
   putStrLn "3. Quit"

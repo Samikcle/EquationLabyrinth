@@ -67,7 +67,7 @@ executable a-Samikcle
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1, csv, ansi-terminal, random, text
+    build-depends:    base ^>=4.17.2.1, csv, ansi-terminal, random
 
     -- Directories containing source files.
     hs-source-dirs:   app
