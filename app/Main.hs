@@ -6,6 +6,8 @@ import System.Console.ANSI
 import System.Random
 import Control.Monad
 import Text.Read
+import System.IO
+
 
 newtype MazeLine = MazeLine [Int]
 newtype Maze = Maze [MazeLine]
@@ -87,27 +89,29 @@ move (Coord x y) d i
     | d == RightM   = Coord (x + i) y
     | otherwise     = Coord x y
 
-run :: Maze -> Coord -> IO()
-run m player = 
-  if player == (Coord 1 1) then do -- if player == getExit m then do
+run :: Maze -> Coord -> Int ->IO()
+run m player turn =
+  if player == Coord 1 1 then do -- if player == getExit m then do
+    clearScreen
     drawMaze m player
     putStrLn "Congratulation for beating the maze!"
+    putStrLn $ "You took " ++ show turn ++ " turn to beat the maze"
     putStrLn "Press Enter to return to menu"
     continue <- getLine
-    putStr ""
+    menu
   else do
-    putStrLn $ show (getExit m)
+    clearScreen
     (eqe, n) <- chooseMathEq m player
     dist <- obtainNValue m player eqe n
     let movemen = calculateMovement eqe n dist
     intDir <- getDirection m player eqe n dist movemen
     let dir = intToDir intDir
     let player2 = checkMovement m player dir movemen
-    run m player2
+    run m player2 (turn+1)
 
 getExit :: Maze -> Coord
-getExit (Maze mazeLines) = 
-    let 
+getExit (Maze mazeLines) =
+    let
         height = length mazeLines
         width = case mazeLines of
             [] -> 0
@@ -119,7 +123,7 @@ checkMovement m c d x
     | x < 0                                                             = checkMovement m c (opposite d) (-x)
     | distanceToWall m c d == 0 && distanceToWall m c (opposite d) == 0 = c
     | distanceToWall m c d == 0                                         = checkMovement m c (opposite d) x
-    | distanceToWall m c d >= x                                         = move c d x 
+    | distanceToWall m c d >= x                                         = move c d x
     | otherwise                                                         = checkMovement m (move c d (distanceToWall m c d)) (opposite d) (x-distanceToWall m c d)
 
 randomMathEqs :: StdGen -> [MathEqs]
@@ -134,7 +138,7 @@ randomInteger gen minI maxI = randomValue
 
 genNumFromEq :: MathEqs -> IO Int
 genNumFromEq eq = do
-  gen <- newStdGen 
+  gen <- newStdGen
   case eq of
     PlusN   -> let x = randomInteger gen 1 10 in return x
     MinusN  -> let x = randomInteger gen 1 10 in return x
@@ -149,12 +153,13 @@ genNumFromEq eq = do
 
 chooseMathEq :: Maze -> Coord -> IO (MathEqs, Int)
 chooseMathEq m c = do
+  clearScreen
   drawMaze m c
   gen <- newStdGen
   let mathEqs = randomMathEqs gen
   eqInts <- mapM genNumFromEq mathEqs
   let eqStrings = zipWith (\eq x -> stringSelectedEq eq x "n") mathEqs eqInts
-  printDistanceToWall m c 
+  printDistanceToWall m c
   putStrLn "Equations:"
 
   forM_ (zip [1..] eqStrings) $ \(i, str) ->
@@ -212,8 +217,9 @@ calculateMovement RootN _ y   = round (sqrt (fromIntegral y))
 
 obtainNValue :: Maze -> Coord -> MathEqs -> Int -> IO Int
 obtainNValue m c e x = do
+  clearScreen
   drawMaze m c
-  printDistanceToWall m c 
+  printDistanceToWall m c
   putStrLn "Selected Equation:"
   putStrLn $ stringSelectedEq e x "n"
   putStrLn "Enter a value for n:"
@@ -221,8 +227,9 @@ obtainNValue m c e x = do
 
 getDirection :: Maze -> Coord -> MathEqs -> Int -> Int -> Int -> IO Int
 getDirection m c e x n a = do
+  clearScreen
   drawMaze m c
-  printDistanceToWall m c 
+  printDistanceToWall m c
   putStrLn "Final Equation:"
   putStrLn $ stringSelectedEq e x (show n) ++ " = " ++ show a
   putStrLn $ "Select a direction to move " ++ show a ++ " spaces in:"
@@ -236,18 +243,58 @@ getDirection m c e x n a = do
 printDistanceToWall :: Maze -> Coord -> IO()
 printDistanceToWall m c = putStrLn $ "Current distance to each wall: Up: " ++ show (distanceToWall m c UpM) ++ " Down: " ++ show (distanceToWall m c DownM) ++ " Left: " ++ show (distanceToWall m c LeftM) ++ " Right: " ++ show (distanceToWall m c RightM)
 
-main :: IO ()
-main = do
-    putStrLn "Hello, Haskell Test!"
-    level <- getInput 1 10
+menu :: IO()
+menu = do
+  clearScreen
+  putStrLn "Welcome to Equation Labyrinth!"
+  putStrLn "1. Play"
+  putStrLn "2. How to play"
+  putStrLn "3. Quit"
+  input <- getInput 1 3
+  case input of 
+    1 -> selectStage
+    2 -> howToPlay
+    3 -> putStrLn "Goodbye!"
+
+selectStage :: IO()
+selectStage = do
+  clearScreen
+  putStrLn "Levels: "
+  putStrLn " 1. Level 1"
+  putStrLn " 2. Level 2"
+  putStrLn " 3. Level 3"
+  putStrLn " 4. Level 4"
+  putStrLn " 5. Level 5"
+  putStrLn " 6. Level 6"
+  putStrLn " 7. Level 7"
+  putStrLn " 8. Level 8"
+  putStrLn " 9. Level 9"
+  putStrLn "10. Level 10"
+  putStrLn "0 to go Back"
+  putStrLn "Your selection: "
+  level <- getInput 0 10
+  if level == 0 then menu
+  else do
     maze <- readMazeFromCSV ("maze levels/level " ++ show level ++ ".csv")
-    let player = (Coord 0 1)
-    
     case maze of
         Nothing -> putStrLn "Failed to read maze from CSV file."
         Just m -> do
             putStrLn "Maze successfully loaded!"
-            run m player
+            run m (Coord 0 1) 0
+
+howToPlay :: IO()
+howToPlay = do
+  clearScreen
+  withFile "How to play.txt" ReadMode $ \handle -> do
+        hSetEncoding handle utf8
+        guide <- hGetContents handle
+        putStrLn guide
+  continue <- getLine
+  menu
+
+main :: IO ()
+main = do
+    menu
 
 
 
